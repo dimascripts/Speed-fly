@@ -1,0 +1,165 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+player.CharacterAdded:Connect(function(newChar)
+    character = newChar
+    humanoid = character:WaitForChild("Humanoid")
+    rootPart = character:WaitForChild("HumanoidRootPart")
+end)
+
+-- Интерфейс
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "DeltaHubUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 200, 0, 260)
+mainFrame.Position = UDim2.new(0.5, -100, 0.3, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = mainFrame
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 35)
+title.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+title.Text = "Delta Hub"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 16
+title.Font = Enum.Font.SourceSansBold
+title.Parent = mainFrame
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 8)
+titleCorner.Parent = title
+
+local layout = Instance.new("UIListLayout")
+layout.Parent = mainFrame
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Padding = UDim.new(0, 6)
+layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+title.LayoutOrder = 0
+
+local function createBtn(text, order)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.9, 0, 0, 35)
+    btn.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.SourceSans
+    btn.TextSize = 14
+    btn.LayoutOrder = order
+    btn.Parent = mainFrame
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 6)
+    btnCorner.Parent = btn
+    
+    return btn
+end
+
+-- Скорость
+local speedBtn = createBtn("Скорость: Выкл", 1)
+local speedOn = false
+speedBtn.MouseButton1Click:Connect(function()
+    speedOn = not speedOn
+    speedBtn.Text = speedOn and "Скорость: Вкл (50)" or "Скорость: Выкл"
+    speedBtn.BackgroundColor3 = speedOn and Color3.fromRGB(45, 120, 45) or Color3.fromRGB(45, 45, 65)
+    humanoid.WalkSpeed = speedOn and 50 or 16
+end)
+
+-- Прыжок
+local jumpBtn = createBtn("Прыжок: Выкл", 2)
+local jumpOn = false
+jumpBtn.MouseButton1Click:Connect(function()
+    jumpOn = not jumpOn
+    jumpBtn.Text = jumpOn and "Прыжок: Вкл (100)" or "Прыжок: Выкл"
+    jumpBtn.BackgroundColor3 = jumpOn and Color3.fromRGB(45, 120, 45) or Color3.fromRGB(45, 45, 65)
+    humanoid.JumpPower = jumpOn and 100 or 50
+end)
+
+-- Noclip (сквозь стены)
+local noclipBtn = createBtn("Noclip: Выкл", 3)
+local noclipOn = false
+noclipBtn.MouseButton1Click:Connect(function()
+    noclipOn = not noclipOn
+    noclipBtn.Text = noclipOn and "Noclip: Вкл" or "Noclip: Выкл"
+    noclipBtn.BackgroundColor3 = noclipOn and Color3.fromRGB(45, 120, 45) or Color3.fromRGB(45, 45, 65)
+end)
+
+RunService.Stepped:Connect(function()
+    if noclipOn and character then
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
+
+-- Полет (Fly)
+local flyBtn = createBtn("Полет: Выкл", 4)
+local flying = false
+local bodyVelocity, bodyGyro
+
+flyBtn.MouseButton1Click:Connect(function()
+    flying = not flying
+    flyBtn.Text = flying and "Полет: Вкл" or "Полет: Выкл"
+    flyBtn.BackgroundColor3 = flying and Color3.fromRGB(45, 120, 45) or Color3.fromRGB(45, 45, 65)
+
+    if flying then
+        bodyVelocity = Instance.new("BodyVelocity")
+        bodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+        bodyVelocity.Velocity = Vector3.zero
+        bodyVelocity.Parent = rootPart
+
+        bodyGyro = Instance.new("BodyGyro")
+        bodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+        bodyGyro.CFrame = rootPart.CFrame
+        bodyGyro.Parent = rootPart
+
+        task.spawn(function()
+            while flying do
+                local camera = workspace.CurrentCamera
+                bodyGyro.CFrame = camera.CFrame
+                bodyVelocity.Velocity = camera.CFrame.LookVector * 50
+                task.wait()
+            end
+        end)
+    else
+        if bodyVelocity then bodyVelocity:Destroy() end
+        if bodyGyro then bodyGyro:Destroy() end
+    end
+end)
+
+-- Кнопка скрыть/показать UI
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0, 45, 0, 45)
+toggleBtn.Position = UDim2.new(0, 15, 0.5, -22)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
+toggleBtn.Text = "GUI"
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleBtn.Font = Enum.Font.SourceSansBold
+toggleBtn.Parent = screenGui
+
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(1, 0)
+toggleCorner.Parent = toggleBtn
+
+toggleBtn.MouseButton1Click:Connect(function()
+    mainFrame.Visible = not mainFrame.Visible
+end)
